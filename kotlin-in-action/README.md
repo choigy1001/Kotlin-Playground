@@ -80,10 +80,12 @@ if 식하나로 함수 본문이 이루어져 있다면 중괄호와 return을 �
 val question = "이게 뭘까요?"
 val answer = 42
 ```
-코틀린은 위처럼 타입을 생략하여 선언할 수 있다.  
-물론 원한다면 타입 명시가 가능하다.
+- 코틀린은 위처럼 타입을 생략하여 선언할 수 있다.  
+- 원한다면 타입 명시가 가능하다.
 
 하지만 위처럼 초기화식을 사용하지 않고 변수를 선언하면 컴파일 에러가 발생하니 그럴땐 타입을 선언하자. 
+
+<br>
 
 <b>변경 가능한 변수와 변경 불가능한 변수</b>  
 변수 선언 시 사용되는 키워드는 2가지이다.
@@ -113,3 +115,316 @@ fun main(args: Array<String>) {
 - 변수명만 사용하는 것도 좋지만 중괄호를 사용하는 것이 더 식별하기 쉽기에 중괄호 사용을 습관화하자.
 
 
+## 2.2 클래스와 프로퍼티
+
+```java
+public class Person {
+    private final String name;
+    
+    public Person(String name) {
+        this.name = name;
+    }
+
+  public String getName() {
+        return name;
+  }
+}
+```
+위 자바 코드는 아래와 같은 코틀린으로 변환할 수 있다.
+```kotlin
+class Person(val name: String)
+```
+
+- 코틀린의 클래스는 기본적으로 public 접근제어자를 가진다.
+
+### 2.2.1 프로퍼티
+```kotlin
+class Person (
+    val name: String,
+    var isMarried: Boolean
+)
+```
+- val은 final과 같다고 했기에 getter를 제공한다.
+- var은 가변이기에 getter, setter 둘다 제공한다.
+
+자바에서 lombok을 사용할때 isOpen과 같이 boolean으로 선언된 필드는  
+getter를 isOpen 그대로 사용했듯  코틀린도 동일한 규칙으로 getter를 사용한다.
+```kotlin
+val person = Person("Bob", true)
+println(person.name)
+println(person.isMarried)
+```
+- getter를 호출하는 대신 프로퍼티를 직접 사용해도 코틀린이 자동으로 게터를 호출한다.
+
+### 2.2.2 커스텀 접근자
+```kotlin
+class Rectangle(val height: Int, val width: Int) {
+    val isSquare: Boolean
+    get() {
+        return height==width
+    }
+}
+val rectangle = Rectangle(10, 10)
+println(rectangle.isSquare)
+```
+- 위와 같이 커스텀 접근자를 선언할 수도 있다.
+
+### 2.2.3 코틀린 소스코드 구조: 디렉터리와 패키지
+<b> package</b>  
+
+- 코틑린에도 패키지 개념이 존재한다.
+- 자바에서는 디렉터리 구조가 패키지 구조를 그대로 따랐으나, 코틀린은 따르지 않아도 된다.
+- 하지만 자바와 같이 패키지별로 디렉터리를 구성하는 편을 권장하고 있다. 
+- 그렇다고 여러 클래스를 한 파일에 넣는 것을 두려워하지 말자.
+
+<b> import </b>
+
+- 다른 패키지에 정의한 선언을 사용하려면 Import를 통해 사용할 수 있다.
+- 패키지 이름 뒤에 .*를 추가하면 패키지 안의 모든 선언을 임포트 할 수 있다는 점도 동일하다.
+
+## 2.3 선택 표현과 처리: enum과 when
+### 2.3.1 enum 클래스 정의
+```kotlin
+enum class Color {
+    RED, ORANGE, YELLOW
+}
+```
+- 코틀린은 자바와 다르게 enum class를 사용한다.
+- 자바와 마찬가지로 프로퍼티와 메서드를 정의할 수 있다.
+
+```kotlin
+enum class Color(
+  val r: Int, val g: Int, val b: Int
+) {
+   RED(255,0,0), ORANGE(255,165, 0);
+
+  fun rgb() = (r * 256 + g) * 256 + b
+}
+```
+- enum class 안에서 메서드를 정의하는 경우에는 위와 같이 세미콜론이 필수이다.
+
+### 2.3.2 when으로 enum 클래스 다루기
+```kotlin
+fun getMnemonic(color: Color) =
+    when (color) {
+        Color.RED -> "Richard"
+        Color.ORANGE -> "Of"
+        Color.BLUE, Color.INDIGO -> "Cold"
+    }
+println(getMnemonic(Color.RED))
+-> Richard
+```
+- when은 자바의 switch를 대신하면서 더 다양하게 사용할 수 있다.
+- 한 분기안에 여러 값을 사용하려면 콤마를 통해 구분할 수 있다.
+- 또한 Import를 통해서 enum 클래스 수식자인 Color를 생략할 수 있다.
+
+### 2.3.3 when과 임의의 객체를 함께 사용
+
+- 코틀린의 when은 자바의 switch와 달리 분기 조건에 객체를 허용한다.
+```kotlin
+fun mix(c1: Color, c2: Color) =
+    when (setOf(c1, c2)) {
+        setOf(RED, YELLOW) -> ORANGE
+        setOf(YELLOW, BLUE) -> GREEN
+    }
+println(mix(RED, YELLOW))
+-> ORANGE
+```
+- 위 코드처럼 set 컬렉션을 만들어 비교하는 것이 가능하다.
+- 조건을 비교하는 기준은 동등성이다.
+
+```kotlin
+fun Request.getBody() =
+  when (val response = executeRequest()) {
+     is Success-> response.body 
+     is HttpError -> throw HttpException(response.status)
+  }
+```
+- 더 나아가 when 절에도 변수에 식의 결과값을 대입하고 사용할 수 있다.
+- 이를 통해 when 밖의 네임스페이스가 더럽혀지는 일을 줄일 수 있다.
+
+### 2.3.4 인자 없는 when 사용
+```kotlin
+fun mixOptimized(c1: Color, c2: Color) =
+  when {
+    (c1 == RED && c2 == YELLOW) || (c1 == YELLOW && c2 == RED) -> ORANGE
+      ...
+  }
+```
+- when에 인자없이 사용할 수 있음을 확인할 수 있다.
+- 2.3.3에서 봤던 코드와 달리 set 인스턴스를 생성하지 않아 불필요한 객체 생성을 줄인다.
+- 하지만 이러한 경우는 가독성이 떨어진다는 장점이 있다.
+
+### 2.3.5 스마트 캐스트: 타입 검사와 타입 캐스트를 조합
+```kotlin
+interface Expr
+class Num(val value: Int): Expr
+class Sum(val left: Expr, val right: Expr): Expr
+
+fun eval(e: Expr): Int {
+  if (e is Num) {
+    val n = e as Num
+    return n.value
+  }
+  if (e is Sum) {
+      return eval(e.right) + eval(e.left)
+  }
+}
+```
+- 자바 스타일대로 작성된 코드이다.
+- 특징으로 is를 사용해 변수 타입을 검사한다.
+- 타입 검사 후 타입 캐스팅을 하는데 이는 불필요한 일이다.   
+코틀린은 타입 검사 후 캐스팅하지 않아도 컴파일러가 캐스팅을 수행해준다. 이를 <b>스마트 캐스트</b>라고 부른다.
+
+<b>스마트 캐스트 </b>
+- 스마트 캐스트는 그 값이 바뀔 수 없는 경우에만 작동한다.
+- 만약 변수가 var이거나, val을 사용하고 있으면서 커스텀 접근자를 사용한다면 변경 가능성이 있기 때문이다.
+
+```kotlin
+fun eval(e: Expr): Int =
+  if (e is Num) {
+    e.value
+  } else if (e is Sum) {
+    eval(e.right) + eval(e.left)
+  }
+```
+- 코틀린스럽게 코드를 위와 같이 작성할 수 있다.
+- if 분기에 식이 하나밖에 없다면 중괄호를 생략할 수 있다.
+- 또한 if 분기에 블록을 사용하는 경우 마지막 식이 그 분기의 결과값이다.
+
+```kotlin
+fun eval(e: Expr): Int =
+    when(e) {
+        is Num ->
+          e.value
+        is Sum ->
+          eval(e.right) + eval(e.left)
+    }
+    
+```
+- 더 나아가 if 대신 when을 사용하여 위와 같이 작성할 수 있다.
+
+## 2.4  대상을 이터레이션: while과 for 루프
+### 2.4.1 while 루프
+```kotlin
+while(조건) {
+  ...
+}
+do {
+  ...
+} while (조건)
+```
+- 코틀린과 자바 동일하게 while 문을 사용할 수 있다.
+
+### 2.4.2 수에 대한 이터레이션: 범위와 수열
+```kotlin
+fun fizzBuzz(i: Int) = when {
+  i % 15 == 0 -> "Fizzbuzz"
+  i % 3 == 0 -> "Fizz"
+  else -> "$i"
+}
+for (i in 1..100) {
+    print(fizzBuzz(i))
+}
+for (i in 100 downTo 1 step 2) {
+    print(fizzBuzz(i))
+}
+```
+- 코틀린은 1..100처럼 범위를 설정해서 사용한다.
+- 또한 downTo를 사용하여 역방향 수열을 만들 수 있고, Step을 사용하여 증가값을 변경할 수 있다.
+- 만약 100까지가 아니라 99까지만 탐색하고 싶은 경우가 있을 수 있는데 그럴땐 until을 사용하면 된다.  
+`for (x in 0 until size)`  `for (x in 0..size-1)` 모두 동일하다.
+
+### 2.4.3 맵에 대한 이터레이션
+
+```kotlin
+val binaryReps = TreeMap<Char, String>()
+for (c in 'A'..'F') {
+  val binary = Integer.toBinaryString(c.toInt())
+  binaryReps[c] = binary
+}
+for ((letter, binary) in binaryReps) {
+    println("$letter = $binary")
+}
+```
+- `for (c in 'A'..'F')`처럼 문자 타입의 값에도 .. 연산자를 사용할 수 있다.
+- 코틀린에서 Map 순회는 자바 Map 내부 클래스인 entry를 사용하는 것 보다 훨씬 간단하게 이용할 수 있다.
+- 또한 map의 get, put을 사용하는 대신 `map[key]`, `map[key]= value`를 사용해 값을 획득하거나 설정할 수 있다.
+
+```kotlin
+val list = arrayListOf("10", "11")
+for((index, element) in list.withIndex()) {
+    println("$index: $element")
+}
+```
+- 또한 맵이 아닌 컬렉션에도 맵에 사용했던 구조 분해구문을 적용할 수 있다.
+- 그리하여 인덱스를 저장된 변수, 데이터가 저장된 변수를 동시에 사용할 수 있다.
+
+### 2.4.4 in으로 컬렉션이나 범위의 원소 검사
+```kotlin
+fun isLetter(c: Char) = c in 'a'..'z' || c in 'A'..'Z'
+println(isLetter('A'))
+-> true
+```
+- in 연산자를 사용해 특정 값이 범위에 속하는지 검사할 수 있다.
+- 반대로 !in을 사용하면 속하지 않는지 검사할 수 있다.
+
+```kotlin
+fun recognize(c: Char) = when (c) {
+  in '0'..'9' -> "It's a digit"
+  else -> "NO"
+}
+println(recognize('3'))
+-> It's a digit
+```
+- in 연산자를 when 식에서도 사용할 수 있다.
+
+범위는 숫자, 문자에만 국한되지 않는다.
+
+- 비교가 가능한 클래스(Comparable 인터페이스를 구현한)라면 범위를 만들 수 있다.
+- 예를 들어 String과 같이 Comparable 인터페이스를 구현한 클래스는 다음과 같이 범위를 정할 수 있다.  
+`println("kotlin" in "java".."scala")`
+- 더 나아가 컬렉션에 속하는지도 다음과 같이 확인할 수 있다.  
+`println("kotlin" in setOf("Java", "Scala"))`
+
+## 2.5 코틀린의 예외 처리
+```kotlin
+val percentage =
+  if (number in 0..100) 
+    number
+  else
+    throw IllegalArgumentException()
+```
+- 코틀린의 예외 처리 방식은 자바와 동일하다.
+- 다른 점이 있다면 예외 인스턴스를 만들 때도 new를 붙일 필요가 없다.
+
+### 2.5.1 try, catch, finally
+```kotlin
+fun readNumber(reader: BufferedReader) : Int? {
+  try {
+    val line = reader.readLine()
+    return Integer.parseInt(line)
+  } catch (e: NumberFormatException) {
+    return null
+  }
+  finally {
+    reader.close()
+  }
+}
+```
+- 자바 코드와 차이점으로는 입출력임에도 불구하고 IOException 예외에 대한 처리가 없다.
+- 즉 코틀린은 자바처럼 Checked Exception, Unchecked Exception을 구분하지 않는다.
+
+### 2.5.2 try를 식으로 사용
+```kotlin
+fun readNumber(reader: BufferedReader) {
+  val number = try {
+    Integer.parseInt(reader.readLine())
+  } catch (e: NumberFormatException) {
+      return
+  }
+}
+```
+- 코틀린의 try 키워드는 if나 when과 마찬가지로 식이다. 즉 try의 값을 변수에 대입할 수 있다.
+- 주의사항으로는 if와 달리 try의 본문을 반드시 중괄호로 둘러싸야 한다.
+- try 본문도 내부에 여러 문장이 있으면 마지막 식의 값이 리턴값이다.
