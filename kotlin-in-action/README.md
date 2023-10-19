@@ -428,3 +428,241 @@ fun readNumber(reader: BufferedReader) {
 - 코틀린의 try 키워드는 if나 when과 마찬가지로 식이다. 즉 try의 값을 변수에 대입할 수 있다.
 - 주의사항으로는 if와 달리 try의 본문을 반드시 중괄호로 둘러싸야 한다.
 - try 본문도 내부에 여러 문장이 있으면 마지막 식의 값이 리턴값이다.
+
+
+# 3장 함수 정의와 호출
+## 3.1 코틀린에서 컬렉션 만들기
+
+```kotlin
+val list = arrayListOf(1, 7, 35)
+val map = hashMapOf(1 to "one", 7 to "seven")
+
+println(list.javaClass)  
+println(map.javaClass)
+// -> class java.util.ArrayList
+// -> class java.util.HashMap
+```
+- 위와 같이 컬렉션을 만들어 사용할 수 있다.
+- 코틀린은 출력문의 결과처럼 자신만의 컬렉션을 제공하지 않는다.
+
+## 3.2 함수를 호출하기 쉽게 만들기
+### 3.2.1 이름 붙인 인자
+```kotlin
+fun <T> joinToString(
+  collection: Collection<T>,
+  separator: String,
+  prefix: String,
+  postfix: String
+): String {
+  val result = StringBuilder(prefix)
+  for ((index, element) in collection.withIndex()) {
+    if (index > 0) result.append(separator)
+    result.append(element)
+  }
+  result.append(postfix)
+  return result.toString()
+}
+```
+- 위 함수는 IDE의 도움을 받으면 파라미터를 식별하기 쉬울 수 있으나 기본적으론 그렇지 않다.
+- 코틀린은 함수를 호출할 때 파라미터 이름을 명시하여 호출할 수 있다.  
+`joinToString(collection, separator = " ", prefix = " ", postfix = ".")`
+- 주의할 점은 자바에서 함수 파라미터 정보를 넣는 것은 JDK 8 부터인데 코틀린은 JDK 6와 호환되기에  
+자바 메서드를 호출할 때 파라미터 이름을 같이 못 넣는 경우가 발생할 수 있다.
+
+### 3.2.2 디폴트 파라미터 값
+```kotlin
+fun <T> joinToString(
+  collection: Collection<T>,
+  separator: String = " ",
+  prefix: String = "",
+  postfix: String = ""
+): String
+```
+- 코틀린의 함수 파라미터에 디폴트 값을 설정할 수 있다.
+- 그래서 디폴트 값을 통해 상당수의 오버로딩을 줄일 수 있다는 장점이 있다.
+- 기본적으로 함수를 호출할 때 파라미터 순서를 지키면서 사용하지만 이름을 붙인다면 순서 상관없이 호출할 수 있다.  
+`joinToString(list, postfix=";", prefix="# ")`
+
+
+주의사항
+- 자바에는 디폴트 파라미터가 없기에 코틀린 함수를 자바에서 호출 시 모든 파라미터를 명시해서 사용해야 한다.
+- 만약 자바에서 자주 코틀린 함수를 호출한다면   
+`@JvmOverloads` 어노테이션을 통해 컴파일러가 자동으로 오버로딩 코드를 추가해준다.
+
+### 3.2.3 정적인 유틸리티 클래스 없애기: 최상위 함수와 프로퍼티
+```kotlin
+package strings
+fun joinToString(...): String {...}
+```
+- 코틀린은 이처럼 클래스 밖에 함수를 선언할 수 있다.
+- JVM은 클래스 내부에 있는 코드만 동작할 수 있기에, 컴파일러는 이런 파일을 컴파일 할 때 새로운 클래스를 정의해준다.
+- 클래스명은 파일의 이름과 동일하고 만약 생성되는 클래스의 이름을 바꾸고 싶다면 `@JvmName` 어노테이션을 이용할 수 있다.
+
+<b>최상위 프로퍼티 </b>
+```kotlin
+var opCount = 0
+fun performOperation() {
+  opCount++
+}
+```
+- 프로퍼티 또한 최상위에 둘 수 있다.
+- 이런 프로퍼티 값은 정적 필드에 저장된다. 다만 프로퍼티를 접근하기 위해 게터, 세터를 사용해야 한다.
+- 상수 자체로 이용하고 싶다면 `const val NAME = "홍길동"`으로 선언해서  
+`public static final String NAME = "홍길동"` 자바 코드처럼 이용할 수 있다.
+
+##3.3 메서드를 다른 클래스에 추가: 확장 함수와 확장 프로퍼티
+```kotlin
+package strings
+
+fun String.lastChar(): Char = this.get(this.length - 1)
+```
+- 코틀린은 확장함수 개념을 통해서 기존의 API를 재작성하지 않고도 위 예제처럼 API를 추가할 수 있다.
+- 확장할 클래스 이름을 <b>수신 객체 타입</b>, 호출하는 대상을 <b>수신 객체</b>라고 부른다.
+- 확장 함수는 캡슐화를 깨지 않는다. 확장함수는 클래스 내부에서만 사용할 수 있는 함수(private)를 사용할 수 없다.
+
+###3.3.1 임포트와 확장 함수
+- 확장 함수를 사용하기 위해서는 똑같이 import를 해서 사용해야 한다.
+- 만약 사용하는 클래스에서 import한 함수와 확장함수의 이름이 같다면 치환하여 충돌을 막을 수 있다.  
+`import strings.lastChar as last`
+
+### 3.3.2 자바에서 확장 함수 호출
+- 자바에서 확장함수는 수신 객체를 첫 번째로 받는 정적 메서드이다. 
+- 확장 함수를 StringUtil.kt 파일에 정의하면 다음과 같이 사용할 수 있다.   
+`char c = StringUtilKt.lastChar("Java")`
+
+### 3.3.3 확장 함수로 유틸리티 함수 정의
+```kotlin
+fun <T> Collection<T>.joinToString(
+  separator: String = ", ",
+  prefix: String = "",
+  postfix: String = ""
+): String {
+  val result = StringBuilder(prefix)
+  for ((index, element) in this.withIndex()) {
+    if (index > 0) result.append(separator)
+    result.append(element)
+  }
+  result.append(postfix)
+  return result.toString()
+}
+```
+- 확장함수를 적용하여 3.2.1에서 보았던 함수를 유틸리티 클래스의 확장함수로 적용하여 변경하였다.
+
+### 3.3.4 확장 함수는 오버라이드할 수 없다.
+```kotlin
+open class View {
+    open fun click() = println("View clicked")
+}
+class Button : View() {
+    override fun click() = println("Button clicked")
+}
+
+val view: View = Button()
+view.click()
+-> Button clicked
+```
+- 코틀린의 메서드 오버라이드도 일반적인 메서드 오버라이드와 동잃하게 동작한다.
+
+```kotlin
+fun View.showOff() = println("I'm a view!")
+fun Button.showOff() = println("I'm a button!")
+val view: View = Button()
+view.showOff()
+-> I'm a view!
+```
+- 확장 함수는 오버라이드에 비해 정적으로 결정된다.
+- 실제 타입은 Button임에도 View의 확장함수가 호출된다.
+
+<b>Tip </b> 확장 함수와 멤버 함수 모두 이름과 시그니처가 같다면?
+
+- 기본적으로 멤버 함수가 우선권을 가지고 호출된다.
+- 그렇기에 기존에 확장 함수를 쓰고 있더라도 클래스에 멤버함수가 추가되면 재컴파일 하는 순간부터 멤버 함수를 사용한다.
+
+### 3.3.5 확장 프로퍼티
+- 확장함수처럼 확장 프로퍼티도 사용할 수 있다.
+- 하지만 상태를 저장할 방법이 없기에 확장함수를 조금 더 짧게 사용할 수 있는 효과정도를 가진다.
+```kotlin
+val String.lastChar: Char
+  get() = get(length - 1)
+```
+
+- 상태를 저장할 방법이 없기 때문에 기본 게터 구현을 제공할 수 없기에 최소한 게터는 꼭 정의를 해야 한다.
+
+## 3.4 컬렉션 처리: 가변 길이 인자, 중위 함수 호출, 라이브러리 지원
+### 3.4.1 자바 컬렉션 API 확장
+- 이전에 컬렉션의 last, max 와 같은 함수는 모두 확장함수였다는 것을 3.3을 보고 알 수 있었다.
+- 실제로 구현을 확인해보면 다음과 같다.
+```kotlin
+fun <T> List<T>.last(): T {
+    // ...
+}
+fun Collection<Int>.max(): Int {
+    // ...
+}
+```
+
+### 3.4.2 가변 인자 함수: 인자의 개수가 달라질 수 있는 함수 정의
+- 코틀린의 가변 인자는 자바의 가변 인자와 개념이 같다.
+- 차이점은 타입 뒤 ... 대신 파라미터 앞에 vararg 변경자를 붙인다.
+- 또한 기존에 자바에서 가변 인자에 배열을 그냥 넘겼다면 코틀린은 스프레드 연산자와 함께 넘겨야 한다.
+```kotlin
+fun main(args: Array<String>) {
+  val list = listOf("args:", *args)
+  println(list)
+}
+```
+
+### 3.4.3 값의 쌍 다루기: 중위 호출과 구조 분해 선언
+```kotlin
+val map = mapOf(1 to "one", 7 to "seven")
+```
+- 위 코드에서 to는 키워드가 아닌 메서드이다.
+- 이 코드에서는 중위 호출이라는 개념이 적용된다.
+- 인자가 하나만 있는 일반 메서드나 인자가 하나뿐인 확장 함수에 중위 호출을 사용할 수 있다.
+
+```kotlin
+infix fun Any.to(other: Any) = Pair(this, other)
+```
+- 함수를 중위 호출에 사용하게 허용하고 싶으면 infix를 함수 선언 앞에 추가하며 된다.
+
+<b>Pair</b>  
+```kotlin
+val (number, name) = 1 to "one"
+```
+- Pair는 말 그대로 두 원소로 이루어진 순서쌍을 반환한다.
+- 위와 같이 코드를 구조 분해 선언이라고 부른다.
+- Pair 인스턴스 외에 다른 객체에도 구조 분해를 적용할 수 있다.
+
+## 3.5 문자열과 정규식 다루기
+### 3.5.1 문자열 나누기
+```kotlin
+println("12.345-6.A".split("\\.|-".toRegex()))
+```
+- 코틀린은 정규식 문법은 자바와 동일하다.
+- 코틀린은 자바의 split과는 다르게 확장함수를 제공하여 사용법에 대한 혼동을 줄였다.
+
+```kotlin
+prtinln("12.345-6.A".split(".", "-"))
+```
+- 이처럼 여러 구분 문자열을 받아 문자열을 나눌 수도 있다.
+
+## 3.6 코드 다듬기: 로컬 함수와 확장
+```kotlin
+class User(val id: Int, val name: String, val address: String)
+
+fun saveUser(user: User) {
+  fun validate(user: User, value: String, fieldName: String) {
+    if (value.isEmpty()) {
+      if (user.name.isEmpty()) {
+        throw IllegalArgumentException("Can't Save user ${user.id}: empty $fieldName")
+      }
+    }
+  }
+  validate(user, user.name, "Name")
+  validate(user, user.address, "Address")
+}
+```
+
+- 코틀린은 로컬 함수 즉 선언한 함수 내에 다시 함수를 작성할 수 있다.
+- 또한 로컬 함수에서 바깥쪽의 파라미터, 변수를 사용할 수 있다.
+- 중첩된 함수가 많을수록 코드는 읽기 어려워지니 일반적으로 한단계만 중첩하길 권장한다.
