@@ -1165,3 +1165,159 @@ car.setMoveLogic(
 - object 키워드는 익명 객체를 정의할 때도 사용된다.
 - 위 코드를 보면 매번 다른 인스턴스를 구현한다는 점에서 자바와 유사한 점을 찾을 수 있다.
 - 코틀린은 익명 클래스는 자바와 달리 여러 인터페이스를 구현하거나 클래스를 확장하면서 인터페이스를 구현할 수 있다. 
+
+# 5장 람다로 프로그래밍
+## 5.1 람다 식과 멤버 참조
+### 5.1.1 람다 소개: 코드 블록을 함수 인자로 넘기기
+- 이전의 익명 클래스와 달리 함수형 프로그래밍을 통해 함수를 값처럼 다루게 되었다.
+- 람다를 사용하면 익명 클래스와 다르게 간결하고 가독성 있는 코드를 작성할 수 있다.
+
+### 5.1.2 람다와 컬렉션
+```kotlin
+fun findTheOldest(people: List<Person>) {
+  var maxAge = 0
+  var theOldest: Person? = null
+  for (person in people) {
+    if (person.age > maxAge) {
+      maxAge = person.age
+      theOldest = person
+    }
+  }
+}
+// 아래는 동일한 코드
+person.maxBy { it.age }
+people.maxBy(Person::age)
+```
+- 람다를 사용하면 위처럼 간략하게 작성할 수 있다.
+- 또한 멤버 참조를 통해 더 간략하게 코드를 작성할 수도 있다.
+
+### 5.1.3 람다 식의 문법
+```kotlin
+{x: Int, y: Int -> x + y }
+val sum = {x: Int, y: Int -> x + y }
+println(sum(1, 2))
+
+run{ println(42) }
+```
+- 람다식은 기본적으로 위와 같이 작성하여 사용할 수 있다.
+- run을 사용하여 인자로 받은 람다를 바로 실행시킬 수도 있따.
+
+```kotlin
+people.maxBy({ p: Person -> p.age })
+//아래와 같이 개선
+people.maxBy() {p: Person -> p.age }
+//아래와 같이 개선
+people.maxBy { p: Person -> p.age }
+
+//etc) 다른 인자가 있고, 람다가 맨 마지막인 경우는 다음과 같이 호출 가능
+people.maxBy("parameter") { p: Person -> p.age}
+```
+- 함수 호출 시 맨 뒤에 있는 인자가 람다 식이라면 그 람다를 괄호 밖으로 빼낼 수 있다는 관습이 있다.
+- 또한 람다가 어떤 함수의 유일한 인자라면 빈 괄호를 없애도 된다.
+
+```kotlin
+people.maxBy { p: Person -> p.age } // 파라미터 타입 명시
+people.maxBy { p -> p.age } // 파라미터 타입 생략(컴파일러가 추론)
+people.maxBy { it.age } // 자동 생성된 파라미터 이름 사용
+```
+- 컴파일러는 람다 파라미터의 타입도 추론할 수 있다.
+- 위 코드는 컬렉션에 Person 타입의 객체가 들어있다는 사실을 알기에 생략이 가능했다.
+- 람다의 파라미터가 하나뿐이고 그 타입을 컴파일러가 추론할 수 있다면 it를 사용할 수 있다.
+  - it를 사용하면 코드를 간단하게 작성할 수 있지만 람다끼리 중첩되어 있다면 가독성이 떨어지니 주의하자.
+
+### 5.1.4 현재 영역에 있는 변수에 접근
+- 자바 람다밖의 지역변수에 접근할 수 있지만 기본적으로 변경은 불가능하다(피할 방법이 존재), 그에 반해 코틀린은 둘 다 가능하다.
+- 람다 안에서 사용하는 외부 변수를 `람다가 포획한 변수` 라고 부른다.
+- 기본적으로 함수 안에 정의된 로컬 변수의 생명 주기는 함수가 반환되면 끝난다.
+  - val 변수는 그 변수의 값이 복사되어 다룬다
+  - var 변수는 Ref 클래스로 감싸서 읽기/변경 가능하게 한다.
+
+### 5.1.5 멤버 참조
+```kotlin
+val getAge = { person: Person -> person.age }
+// 아래와 같이 사용
+val getAge = Person::age
+```
+- 멤버 참조는 프로퍼티나 메서드를 단 하나만 호출하는 함수 값을 만들어준다.
+
+```kotlin
+fun salute() = println("salute!")
+run(::salute)
+// -> salute!
+```
+- 위 코드처럼 최상위에 선언된 함수나 프로퍼티를 참조할 수도 있다.
+
+```kotlin
+data class Person(val name: String, val age: Int)
+val createPerson = ::Person
+val p = createPerson("Alice", 29)
+```
+- 생성자 참조를 사용하면 클래스 생성 작업을 연기하거나 저장해둘 수 있다.
+
+```kotlin
+fun Person.isAdult() = age >= 21
+val predicate = Person::isAdult
+```
+- 확장 함수도 멤버 함수와 똑같은 방식으로 참조할 수 있다.
+
+```kotlin
+val p = Person("name", 34)
+val personsAgeFunction = Person::age
+println(personsAgeFunction(p))
+
+val dmitrysAgeFunction = p::age // 코틀린 1.1 부터 사용할 수 있는 바운드 멤버 참조
+println(dmitrysAgeFunction())
+```
+- 코틀린 1.0에서는 클래스나 메서드나 프로퍼티에 대한 참조를 얻은 다음에 그 참조를 호출할 때 인스턴스 객체를 제공해야 했다.
+- 코틀린 1.1 부터는 바운드 멤버 참조를 통해 인스턴스를 함께 저장하여 그 인스턴스에 대한 멤버를 바로 호출할 수 있다.
+
+## 5.2 컬렉션 함수형 API
+### 5.2.1 필수적인 함수: filter와 map
+```kotlin
+val people = listOf(Person("Alice", 29), Person("Bob", 31))
+println(people.filter { it.age > 30 })
+// -> [Person(name=Bob, age=31)]
+val list = listOf(1,2,3,4)
+println(list.map { it * it})
+// -> [1, 4, 9, 16]
+```
+- 기본적으로 자바와 동일하게 동작한다.
+
+### 5.2.2 all, any, count, find: 컬렉션에 술어 적용
+```kotlin
+val canBeInClub27 = { p: Person -> p.age <= 27 }
+val people = listOf(Person(age = 27), Person(age = 3))
+println(people.all(canBeInClub27))
+//true
+println(people.any(canBeInClub27))
+//true
+println(people.count(canBeInClub27))
+// 2
+println(people.find(canBeInClub27))
+// Person(name=Alice, age=27)
+```
+- all() 메서드는 모두가 조건에 부합하는지, any()는 하나라도 부합하는지 체크한다.  
+- count() 조건에 부합하는 원소의 개수를 구하고, find()는 가장 먼저 조건에 만족하는 원소를 반환한다. 
+
+### 5.2.3 groupBy: 리스트를 여러 그룹으로 이뤄진 맵으로 변경
+```kotlin
+val people = listOf(Person("Alice", 31), Person("Bob", 29), Person("Carol", 31))
+println(people.groupBy { it.age })
+```
+- 위 결과 타입은 Map<Int, List<Person>> 이다. 그리하여 위 결과는 두 개의 리스트로 쪼개진다.
+
+### 5.2.4 flatMap과 flatten: 중첩된 컬렉션 안의 원소 처리
+```kotlin
+class Book(val title: String, val author: List<String>)
+
+val books = listOf(
+  Book("Thuresday Next", listOf("name1", "name2")),
+  Book("Monday Next", listOf("name3", "name4")),
+  Book("Saturday Next", listOf("name5", "name6")),
+)
+println(people.flatMap { it.authors } .toSet())
+```
+- 위 예제를 토대로 flatMap 함수는 모든 책의 작가를 평평한 리스트 하나로 모은다.
+- 그리고 toSet()을 통해 중복을 없애고 집합으로 만든다.
+
+## 5.3 지연 계산(lazy) 컬렉션 연산
