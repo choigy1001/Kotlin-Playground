@@ -1321,3 +1321,99 @@ println(people.flatMap { it.authors } .toSet())
 - 그리고 toSet()을 통해 중복을 없애고 집합으로 만든다.
 
 ## 5.3 지연 계산(lazy) 컬렉션 연산
+
+```kotlin
+people.asSequence()
+  .map(Person::name)
+  .filter { it.startsWith("A") }
+  .toList()
+```
+- map과 filter 같은 함수를 연쇄하면 매 단계마다 임시 컬렉션이 생성된다.
+- 시퀀스를 사용해서 임시 컬렉션 만드는 것을 막을 수 있다.
+- 시퀀스를 반환해서 사용해도 되지만 인덱스로 접근하는 등 다른 API 메서드가 필요하면 리스트로 반환하는 것을 권장한다.
+
+### 5.3.1 시퀀스 연산 실행: 중간 연산과 최종 연산
+```kotlin
+people.asSequence()
+  .map(Person::name) // 중간 연산
+  .filter { it.startsWith("A") } // 중간 연산
+  .toList() // 최종 연산
+```
+- 시퀀스를 사용하면 자바처럼 중간연산, 최종연산이 생기는데 이때 최종연산이 존재해야 중간연산이 수행될 수 있다.
+
+### 5.3.2 시퀀스 만들기
+```kotlin
+fun SequenceTest() {
+  val naturalNumbers = generateSequence(0) { it + 1 }
+  val numbersTo100 = naturalNumbers.takeWhile { it <= 100 }
+  println(numbersTo100.sum())
+}
+```
+- 시퀀스는 generateSequence()와 같이 만들 수 있다.
+- 위 로직은 최종 연산인 sum() 연산이 수행되기 전까지 중간연산이 수행되지 않는다.
+
+## 5.4 자바 함수형 인터페이스 활용
+### 5.4.1 자바 메서드에 람다를 인자로 전달
+````kotlin
+Gogo.postponeComputation(1000) { println(42)}
+````
+- 자바 메서드에 코틀린 람다를 전달할 수 있다.
+- 익명 클래스는 매번 생성되기 때문에 익명 클래스 넘기기보단 람다를 넘기는 것이 효율적이다.
+- 다만 람다가 주변 영역의 변수를 사용한다면 같은 인스턴스를 사용할 수 없다.
+
+### 5.4.2 SAM 생성자
+```kotlin
+fun createAllDoneRunnable(): Runnable {
+        return Runnable { println("All done!") }
+    }
+    fun execute() {
+        createAllDoneRunnable().run()
+    }
+```
+- SAM 생성자는 람다를 함수형 인터페이스의 인스턴스로 변환할 수 있게 컴파일러가 자동으로 생성한 함수다.
+- 컴파일러가 자동으로 람다를 함수형 인터페이스 익명 클래스로 바꾸지 못하는 경우 사용할 수 있다.
+- 위 코드처럼 함수형 인터페이스의 인스턴스를 반환하는 메서드가 있다면 람다를 직접 반환할 수 없고,  
+반환할려는 람다를 SAM 생성자로 감싸야 한다.
+
+## 5.5 수신 객체 지정 람다: with와 apply
+### 5.5.1 with 함수
+```kotlin
+fun alphabet(): String {
+  val StringBuilder = StringBuilder()
+  return with(stringBuilder) { // 수신 객체 지정
+    for (letter in 'A'..'Z') { //this를 명시해서 앞으로 지정한 수신 객체의 메서드를 호출
+        this.append(letter)
+    }
+    append("I know the alphabet!") // this를 생략하고 메서드를 호출한다.
+    this.toString() // 람다에서 값을 반환한다.
+  }
+}
+```
+- 코틀린의 with 함수를 통해서 수신 객체를 지정하여 수신객체의 이름을 반복하지 않고도 다양한 연산을 수행할 수 있다.
+- with은 특별한 구문이 아닌 함수로 파라미터를 (사용 객체, 람다) 두개 받는 함수이다.
+- this와 점(.)을 사용하지 않고 프로퍼티니 메서드 이름만 사용해도 수신 객체에 접근할 수 있다.
+
+```kotlin
+fun alphabet() = with(StringBuilder()) {
+  for (letter in 'A'..'Z') {
+      append(letter)
+  }
+  append("I know the alphabet!")
+  toString()
+}
+```
+- 위처럼 stringBuilder 인스턴스를 with 파라미터에 바로 선언하여 간략하게 작성할 수 있다.
+- 만약에 메서드가 같은 경우에는 this@클래스명.메서드()처럼 어떤 메서드를 참조하는지 확실히 할 수 있다.
+
+### 5.2.2 apply 함수
+```kotlin
+fun alphabet () = StringBuilder().apply {
+  for (letter in 'A'..'Z') {
+      append(letter)
+  }
+  append("I know the alphabet !")
+}.toString()
+```
+- apply() 함수는 with()와 다르게 항상 자신에게 전달된 객체 즉 수신 객체를 반환한다는 점이다.
+- 위 코드는 StringBuilder가 수신 객체이고 반환받아 toString() 메서드를 호출하게 된다.
+
