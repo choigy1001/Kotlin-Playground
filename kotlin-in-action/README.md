@@ -1417,3 +1417,133 @@ fun alphabet () = StringBuilder().apply {
 - apply() 함수는 with()와 다르게 항상 자신에게 전달된 객체 즉 수신 객체를 반환한다는 점이다.
 - 위 코드는 StringBuilder가 수신 객체이고 반환받아 toString() 메서드를 호출하게 된다.
 
+# 6장 코틀린 타입 시스템
+## 6.1 널 가능성
+###6.1.1 널이 될 수 있는 타입
+```kotlin
+fun strLenSafe(s: String?): Int = 
+    if (s != null) s.length else 0
+```
+- 어떤 타입이든 상관없이 타입 이름 뒤에 물음표를 붙이면 그 타입의 변수나 프로퍼티에 null 참조를 저장할 수 있다.
+- 고로 물음표가 없는 타입은 null 참조를 허용하지 않는다.
+
+
+
+### 6.1.3 안전한 호출 연산자: ?.
+```kotlin
+fun printAllCaps(s: String?) {
+  val allCaps: String? = s?.uppercase()
+}
+```
+- 코틀린의 ?. 연산자는 null 검사와 메서드 호출을 한 번의 연산으로 수행한다.
+
+### 6.1.4 엘비스 연산자: ?:
+```kotlin
+fun foo(s: String?) {
+    val t: String = s ?: ""
+}
+```
+- null 대신 사용할 디폴트 값을 지정할 때 엘비스 연산자(?:)를 사용할 수 있다.
+- 엘비스 연산자 우항에는 return, throw 등의 연산을 넣을 수 있다.
+
+### 6.1.5 안전한 캐스트: as?
+```kotlin
+class Person(val firstName: String, val lastName: String) {
+    override fun equals(o: Any?): Boolean {
+      val otherPerson = o as? Person ?: return false
+      return otherPerson.firstName == firstName && otherPerson.lastName == lastName
+    }
+}
+```
+- as? 연산자는 어떤 값을 지정한 타입으로 변환할 수 없다면 null을 반환한다.
+- 위 처럼 as? 연산자에 엘비스 연산자를 사용하는 패턴이 일반적이다.
+
+### 6.1.6 널 아닌 단언: !!
+```kotlin
+fun ignoreNull(s: String?) {
+  val sNotNull: String = s!!
+  println(sNotNull)
+}
+```
+- !!은 널이 무조건적으로 아님을 표시하기 위해 사용한다.
+- 대게 컴파일러가 null 체크를 해주지만 중복적으로 null을 검사하는 경우에 사용하게 된다.
+- 어떤 값이 null이었는지 확실히 하기 위해 여러 !! 단언문을 한 줄에 사용하는 일을 지양해라.
+  - `person.company!!.address!!.country`
+
+### 6.1.7 let 함수
+```kotlin
+fun sendEmailTo(email: String) {
+    println("Sending email to $email")
+}
+var email: String? = "12@exam.com"
+email?.let {sendEmailTo(it) }
+// -> Sending email to 12@exam.com
+email = null
+email?.let { sendEmailTo(it) }
+```
+- let은 널인지 검사한 다음에 그 결과를 변수에 넣는 작업을 간단한 식을 사용해 처리할 수 있다.
+- 그리하여 위처럼 Null이 아니면 Print 구문을 수행하고 아니면 수행하지 않게 작성할 수 있다.
+
+### 6.1.8 나중에 초기화할 프로퍼티
+```kotlin
+class MyService {
+    fun performAction() : String = "foo"
+}
+class MyTest {
+    private lateinit var myService: MyService
+
+  @Before
+  fun setUp() {
+      myService = MyService()
+  }
+
+  @Test
+  fun testAction() {
+      Assert.assertEquals("foo", myService.performAction())
+  }
+}
+```
+- 기본적으로 생성자에서 프로퍼티는 모두 초기화해야 한다.
+  - 그렇기에 프로퍼티가 Null을 허용하지 않으면 Null이 아닌 것으로 초기화해야 한다.
+  - Null을 허용한다면 모든 프로퍼티 접근에 널 검사, !! 연산자가 필요해지기에 가독성이 매우 떨어지고 불편해진다.
+- 인스턴스를 만들고 난 후 나중에 초기화를 할때는 lateinit 변경자를 사용하면 된다.
+- val 프로퍼티는 final 필드로 컴파일 되며, 생성자 안에서 반드시 초기화되어야 하기 때문에   
+나중에 초기화하는 프로퍼티는 var이어야 한다.
+
+### 6.1.9 널이 될 수 있는 타입 확장
+```kotlin
+fun verifyUserInput(input: String?) {
+  if (input.isNullOrBlank()) {
+    println("Null or Blank")
+  }
+}
+```
+- 확장함수를 통해 Null에 대한 대비를 할 수 있다.
+
+### 6.1.10 타입 파라미터의 널 가능성
+```kotlin
+fun <T> printHashCode(t: T) {
+    println(t?.hashCode())
+}
+```
+- 위 처럼 타입 파라미터를 써도 파라미터는 null일 수 있다.
+- 그렇기에 위 상황에서는 안전한 호출(?.)을 써야 한다.
+```kotlin
+fun <T: Any> printHashCode(t: T) {
+    println(t?.hashCode())
+}
+printlnHashCode(null)
+// -> 컴파일 오류
+```
+- 이처럼 타입 상한을 지정하면 null이 될 수 없도록 개선할 수 있다.
+- 실제로 null을 파라미터로 호출하면 위 코드는 컴파일 에러가 발생한다.
+
+### 6.1.11 널 가능성과 자바
+
+- 자바에는 널 가능성을 지원하지 않는다.
+  - 널 가능성에 대한 정보는 자바의 @Nullable, @NotNull과 같은 어노테이션을 통해 코틀린이 확인할 수 있다.
+- 만약 널 관련 정보가 없다면 자바의 타입은 코틀린의 플랫폼 타입이 된다.
+  - 플랫폼 타입은 널이 될 수 있거나 널이 될 수 없는 타입 모두로 사용할 수 있다.
+- 코틀린 컴파일러는 공개(public) 가시성인 코틀린 함수에 있는 널이 아닌 타입인 파라미터와 수신 객체에 대한 널 검사를 추가해준다.
+
+
