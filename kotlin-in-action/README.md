@@ -1546,4 +1546,135 @@ printlnHashCode(null)
   - 플랫폼 타입은 널이 될 수 있거나 널이 될 수 없는 타입 모두로 사용할 수 있다.
 - 코틀린 컴파일러는 공개(public) 가시성인 코틀린 함수에 있는 널이 아닌 타입인 파라미터와 수신 객체에 대한 널 검사를 추가해준다.
 
+## 6.2 코틀린의 원시 타입
+### 6.2.1 원시타입: Int, Boolean 등
+```kotlin
+fun showProgress(progress: Int) {
+  val percent = progress.coerceIn(0, 100)
+  println(percent)
+}
+```
+- 코틀린은 자바와 다르게 원시타입과, 래퍼 타입을 구분하지 않고 하나로 사용한다.
+- 위처럼 Int 타입에서 메서드를 호출할 수 있다.
+- 코틀린이 그렇다고 모든걸 참조 타입으로 표현하지는 않는다.
+  - 대부분의 경우는 자바의 int 타입으로 컴파일 된다.
+  - 만약 컬렉션이나, 제네릭과 같이 이런 컴파일이 불가능한 상황이라면 Integer 객체가 된다.
+
+### 6.2.2 널이 될 수 있는 원시 타입: Int?, Boolean? 등
+```kotlin
+data class Person(val name: String, val age: Int? = null) {
+    fun isOlderThan(other: Person): Boolean? {
+      if (age == null || other.age == null) {
+        return null
+      }
+      return age > other.age
+    }
+}
+```
+- 자바의 기본 타입은 당연하게도 null이 들어갈 수 없기에 코틀린의 널이 될 수 있는 타입은 래퍼 타입이 된다.
+- 위 코드처럼 코틀린에서 컴파일러는 기본적으로 널 검사를 마친 다음에야 일반적인 값처럼 다루게 허용한다.
+
+### 6.2.3 숫자 변환
+```kotlin
+val i = 1
+val l: Long = i.toLong()
+```
+- 코틀린은 자동 변환은 불가능하다.
+  - 그렇기에 코틀린은 모든 원시 타입에 대한 변환 함수를 제공한다.
+  
+### 6.2.4 Any, Any?: 최상위 타입
+
+- 자바에서 Object가 클래스 계층의 최상위 타입이듯 코틀린에서는  
+Any 타입이 모든 널이 될 수 없는 타입의 조상 타입이다.
+- 하지만 자바의 Object는 참조 클래스만 조상이지만,  
+Any 타입은 Int 등의 원시타입도 포함하여 조상 타입이 된다.
+
+### 6.2.5 Unit 타입: 코틀린의 void
+```kotlin
+fun f() : Unit {}
+```
+- 코틀린의 Unit 타입은 자바의 void와 같은 기능을 한다.
+- Unit은 void와 다르게 모든 기능을 가질 수 있는 일반적인 타입이고, 타입 인자로 사용할 수 있다.
+
+```kotlin
+interface Processor<T> {
+  fun process(): T
+}
+class NoResultProcessor : Processor<Unit> {
+  override fun process() {
+    TODO()
+  }
+}
+```
+- 인터페이스를 구현하면서 Unit 타입을 반환하도록 명시해서 작성해도 되지만 컴파일러가 묵시적으로 return Unit을 작성해준다.
+- 자바에서 Callable, Runnable과 별도로 인터페이스를 분리하는 방법을 코틀린은 Unit으로 해결했다고 볼 수 있다.
+
+### 6.2.6 Nothing 타입: 이 함수는 결코 정상적으로 끝나지 않는다.
+```kotlin
+fun fail(message: String): Nothing {
+    throw IllegalStateException(message)
+}
+```
+- Nothing 타입은 함수가 정상적으로 끝나지 않을 경우를 표현하기 위해 사용하는 타입이다.
+- Nothing 타입은 아무 값도 포함하지 않는다. 따라서 반환 타입으로 사용하는 것을 권장한다.
+
+## 6.3 컬렉션과 배열
+### 6.3.1 널 가능성과 컬렉션
+```kotlin
+fun test() {
+  val result = ArrayList<Int?>()
+}
+```
+- 위 List는 원소가 Null이 들어올 수 있다는 얘기이다.
+- List 자체가 Null인 경우와 구분해서 사용해야 한다.
+
+### 6.3.2 읽기 전용과 변경 가능한 컬렉션
+
+- 코틀린의 Collection은 원소를 추가하거나, 제거하는 메서드가 없다.
+- MutableCollection은 Collection 인터페이스를 확장하여 원소를 추가, 삭제 등의 메서드를 추가로 제공한다.
+- 컬렉션은 기본적으로 읽기 전용으로만 제공하라.
+
+```kotlin
+fun test() {
+  val list: Collection<Int> = listOf(3, 5, 7)
+  val mutableList: MutableCollection<Int> = arrayListOf(1)
+  listOf(list, mutableList)
+}
+```
+- 컬렉션의 요소들이 각자 다른 객체의 참조를 얻고 있는 상황도 있을 것이다.
+  - 그렇기에 읽기 전용 클래스가 항상 변경 불가능하다는 것은 아니다.
+  - 또한 병렬 실행된다면 읽기 전용 컬렉션이 항상 Thread-safe하지 않기에 주의해서 사용해야 한다.
+
+### 6.3.3 코틀린 컬렉션과 자바
+
+- 모든 코틀린 컬렉션은 그에 상응하는 자바 컬렉션 인터페이스의 인스턴스이다.
+- 실제로 자바의 ArrayList가 코틀린의 MutableList를 확장한 구조를 가진다.
+- 자바에는 읽기 전용, 변경 가능 컬렉션을 구분하지 않으므로 코틀린의 읽기전용 컬렉션을 자바의 메서드에 넘겨도 이를 막을 수 없다.
+  - 그렇기에 개발자가 이 부분을 책임지고 구현해야 한다.
+
+### 6.3.4 컬렉션을 플랫폼 타입으로 다루기
+
+
+### 6.3.5 객체의 배열과 원시 타입의 배열
+```kotlin
+fun main(args: Array<String>) {
+  for (i in args.indices) {
+      println("$i is : ${args[i]}")
+  }
+}
+```
+- 코틀린 배열은 타입 파라미터를 받는 클래스다.
+- 코틀린에서 원시 타입 배열을, IntArray, CharArray 등과 같이 제공한다.
+  - 이 모든 원시 타입 배열은 자바의 int[], char[]와 같이 컴파일 된다.
+
+```kotlin
+fun main(args: Array<String>) {
+  args.forEachIndexed { index, element ->
+      println("$index is : $element")
+  }
+}
+```
+- 코틀린은 배열에 기본 연산 이외에도 모든 확장함수를 제공한다.
+  - 또한 원시 타입 배열에도 filter,map을 사용할 수 있다.
+
 
